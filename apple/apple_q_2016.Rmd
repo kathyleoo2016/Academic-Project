@@ -1,0 +1,76 @@
+---
+  output: word_document
+---
+```{r}
+mydata=read.table("apple_q_2016.csv", sep = ",",header = TRUE)
+sales=ts(mydata$sales, start = c(2007,3), frequency = 4) # take the sales column and make it as the time series, start from 2007, and frequency is 1 (start=c(2007, 3), frequency=4) indicates quarterly data from 2007 Q3
+```
+
+#plot each quarter's sales
+```{r}
+plot(mydata$sales,type = "l", col="red", ylab = "",xlab = "mydata$time")
+points(mydata$sales, col="blue")
+title("Quarterly Iphone Sales")
+```
+
+#cumulative sales
+```{r}
+Y=cumsum(mydata$sales)
+Y=ts(Y, start = c(2007,3), frequency = 4) # make it as a time series
+plot(Y,type = "l", col="pink", ylab = "",xlab = "") 
+points(Y, col="green")
+title("Cumulative Iphone Sales")
+
+```
+#run the regression model between sales and 
+```{r}
+Y=c(0,Y[1:length(Y)-1])  # we need the lagged cummulative sales
+Ysq = Y**2
+model=lm(mydata$sales~Y+Ysq)
+summary(model)
+
+```
+
+```{r}
+a<-model$coefficients[1]
+b<-model$coefficients[2]
+c<-model$coefficients[3]
+
+mplus =(-b+sqrt(b^2-4*a*c))/(2*c)
+mminus=(-b-sqrt(b^2-4*a*c))/(2*c)
+m<-mminus
+p=1/m
+q=b+p
+```
+
+#Bass model
+```{r}
+bassModel = function(p,q,m,T=100) # T how many period you want
+{
+  s=double(T)
+  y=double(T+1)
+  y[1]=0
+  for(t in 1:T){
+    s[t]=p*m+(q-p)*y[t]-(q/m)*y[t]**2
+    y[t+1]=y[t]+s[t]
+  }
+  return(list(sales=s, cumSales=cumsum(s)))
+}
+
+# compute sales
+spred =bassModel(p,q,m,T=38)$sales  # predicted sales for 2007 Q3 to 2013 Q1 as there are 23 data points
+spred =ts(spred, start=c(2007,3),frequency = 4)
+ts.plot(sales, spred, col=c("blue","red"))
+legend("bottomright", legend = c("actual", "bass model"),fill = c("blue","red"))
+```
+
+# compute cummulative sales
+```{r}
+spred=bassModel(p,q,m, T=100)$sales  # you can delete T=100, as it is defaulted to be 100
+cumspred = ts(cumsum(spred), start = c(2007,3), frequency = 4)
+cumsales = ts(cumsum(sales),start = c(2007,3), frequency = 4 )
+ts.plot(cumsales, cumspred, col=c("blue","red"))
+legend("bottomright", c("actual", "bass model"),fill = c("blue","red"))
+
+```
+
