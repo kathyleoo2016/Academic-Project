@@ -1,0 +1,136 @@
+---
+output: word_document
+---
+```{r}
+setwd("C:/Users/kathy/Desktop/SCU/2016 summer/Courses/Fall/MKTG3597_Marketing Analytics/MKTG3597_MarketingAnalytics/Group Project")
+mydata= read.csv("estimate.csv")
+mydata$adzillow=mydata$Zillow.House.Value/1000000
+library(aod)
+library(ggplot2)
+library(Rcpp)
+attach(mydata)
+
+holdout=read.csv("holdout.csv")
+holdout$adzillow=holdout$Zillow.House.Value/1000000
+
+logit1<- glm(Contributed~Purchase.amount+factor(Performance.Type)+parent.or.not+adzillow,  family="binomial") 
+summary(logit1)
+
+logit2<-glm(Contributed~Purchase.amount+factor(Performance.Type)+parent.or.not+adzillow+Special.campain,  family="binomial") 
+summary(logit2)
+
+anova(logit1,logit2, test="Chisq")
+
+logit11<- glm(Contributed~Purchase.amount+factor(Performance.Type)+adzillow+Special.campain+parent.or.not*Nutcracker, ,data=mydata,family="binomial")
+summary(logit11)
+
+logit22<-glm(Contributed~Purchase.amount+factor(Performance.Type)+adzillow+Special.campain+parent.or.not*Nutcracker, data = mydata, family="binomial") 
+summary(logit22)
+
+
+with(logit1, null.deviance - deviance)   # get the difference between null deviance and deviance to check the model fitness just what F-Stats' function
+with(logit1, df.null - df.residual)
+with(logit1, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+
+with(logit2, null.deviance - deviance)   # get the difference between null deviance and deviance to check the model fitness just what F-Stats' function
+with(logit2, df.null - df.residual)
+with(logit2, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+
+# predictions on the estimate data on logit1
+pred1=predict(logit1,type="response")
+donate_pred1<-ifelse(pred1>=0.5,1,0)
+error1<-mean(donate_pred1!=mydata$Contributed)
+print(paste("accuracy", 1-error1))
+range(pred1)
+
+# predictions on the estimate data on logit2
+pred2=predict(logit2,type="response")
+donate_pred2<-ifelse(pred2>=0.5,1,0)
+error2<-mean(donate_pred2!=mydata$Contributed)
+print(paste("accuracy", 1-error2))
+range(pred2)
+
+pred3=predict(logit11,type="response")
+donate_pred3<-ifelse(pred3>=0.5,1,0)
+error3<-mean(donate_pred3!=mydata$Contributed)
+print(paste("accuracy", 1-error3))
+range(pred3)
+
+pred4=predict(logit22,type="response")
+donate_pred4<-ifelse(pred4>=0.5,1,0)
+error4<-mean(donate_pred4!=mydata$Contributed)
+print(paste("accuracy", 1-error4))
+range(pred4)
+
+
+# predictions on the holdout data  on logit1
+predictions1 = predict(logit1,newdata=holdout,type="response")
+donate_pred1<-ifelse(predictions1>=0.5,1,0)
+error3<-mean(donate_pred1!=holdout$Contributed)
+print(paste("accuracy", 1-error3))
+
+# predictions on the holdout data  on logit2
+predictions2 = predict(logit2,newdata=holdout,type="response")
+donate_pred2<-ifelse(predictions2>=0.5,1,0)
+error4<-mean(donate_pred2!=holdout$Contributed)
+print(paste("accuracy", 1-error4))
+
+holdout$hitrate<-ifelse(donate_pred2==holdout$Contributed,1,0)
+t=table(holdout$hitrate)
+t
+```
+
+# calculate the likelihood
+```{r}
+# test the maxium likelihood of the two models
+library(lmtest)
+lrtest(logit1, logit2)  # the one with 1 more variable has higher likelihood
+```
+
+
+# Run again with 70% of the sample data and 30% of the hold out data
+```{r}
+df_5=read.csv("df5.csv")
+library(caret)
+newtraining<-createDataPartition(y=df_5$Cust..ID,p=0.7,list = FALSE)
+training2<-df_5[newtraining,]
+holdout2<-df_5[-newtraining,]
+
+
+logit3<- glm(Contributed~Purchase.amount+factor(Performance.Type)+parent.or.not+adzillow, data =training2,  family="binomial") 
+summary(logit3)
+
+logit4<-glm(Contributed~Purchase.amount+factor(Performance.Type)+parent.or.not+adzillow+Special.campain, data =training2, family="binomial") 
+summary(logit4)
+
+# test the maxium likelihood of the two models
+lrtest(logit3, logit4)  # the one with 1 more variable has higher likelihood
+
+
+# predictions on the estimate data (training2) on logit1
+pred3=predict(logit3,type="response")
+donate_pred<-ifelse(pred3>=0.5,1,0)
+error<-mean(donate_pred!=training2$Contributed)
+print(paste("accuracy", 1-error))
+range(pred3)
+
+# predictions on the estimate data(training2) on logit2
+pred4=predict(logit4,type="response")
+donate_pred<-ifelse(pred4>=0.5,1,0)
+error<-mean(donate_pred!=training2$Contributed)
+print(paste("accuracy", 1-error))
+range(pred4)
+
+# predictions on the holdout2 data  on logit3
+predictions3 = predict(logit3,newdata=holdout2,type="response")
+donate_pred3<-ifelse(predictions3>=0.5,1,0)
+error3<-mean(donate_pred3!=holdout2$Contributed)
+print(paste("accuracy", 1-error3))
+
+# predictions on the holdout2 data  on logit4
+predictions4 = predict(logit4,newdata=holdout2,type="response")
+donate_pred4<-ifelse(predictions4>=0.5,1,0)
+error4<-mean(donate_pred4!=holdout2$Contributed)
+print(paste("accuracy", 1-error4))
+```
+
