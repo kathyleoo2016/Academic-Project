@@ -1,0 +1,60 @@
+---
+output: word_document
+---
+```{r}
+mydata=read.table("tesla.csv", sep = ",", header = TRUE)
+```
+
+#plot each quarter's sales
+```{r}
+plot(mydata$sales,type = "l", col="red", ylab = "",xlab = "mydata$time")
+points(mydata$sales, col="blue")
+title("Quarterly Tesla Sales")
+```
+
+#cumulative sales
+```{r}
+Y=cumsum(mydata$sales)
+plot(Y,type = "l", col="pink", ylab = "",xlab = "") 
+points(Y, col="green")
+title("Cumulative Tesla Sales")
+
+```
+#run the regression model between sales and 
+```{r}
+Y=c(0,Y[1:length(Y)-1])
+Ysq = Y**2
+model=lm(mydata$sales~Y+Ysq)
+summary(model)
+
+```
+
+```{r}
+a<-model$coefficients[1]
+b<-model$coefficients[2]
+c<-model$coefficients[3]
+
+mplus =(-b+sqrt(b^2-4*a*c))/(2*c)
+mminus=(-b-sqrt(b^2-4*a*c))/(2*c)
+m<-mminus
+p=1/m
+q=b+p
+```
+
+#Bass model
+```{r}
+bassModel = function(p,q,m,T=100)
+{
+  s=double(T)
+  y=double(T+1)
+  y[1]=0
+  for(t in 1:T){
+    s[t]=p*m+(q-p)*y[t]-(q/m)*y[t]**2
+    y[t+1]=y[t]+s[t]
+  }
+  return(list(sales=s, cumSales=cumsum(s)))
+}
+
+# compute
+spred =bassModel
+```
